@@ -195,7 +195,7 @@ void VoliroTrajectoriesNode::multiDofJointTrajectoryCallback(
 
 bool VoliroTrajectoriesNode::planTrajectorySrv(std_srvs::Empty::Request& request,
                                      std_srvs::Empty::Response& response) {
-  return planTrajectory();
+  return parseTextFile(waypoints_filename_);
 }
 
 bool VoliroTrajectoriesNode::loadFileSrv(std_srvs::Empty::Request& request,
