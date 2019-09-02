@@ -40,6 +40,8 @@ VoliroTrajectoriesNode::VoliroTrajectoriesNode(
   initializeSubscribers();
   initializePublishers();
 
+  home_.position_W << 0, 0, 1;
+
   trajectory_running_ = false;
   trajectory_end_time_ = ros::Time::now();
 
@@ -126,8 +128,6 @@ void unwrapAxisAngle(const Eigen::Vector3d &axis1, const Eigen::AngleAxisd &rot2
 }
 
 void VoliroTrajectoriesNode::rotateRPYToAxisAngle() {
-  std::cout << "Getting angle axes repr.:" << std::endl;
-
   for (int i=0;i<n_points_;i++) {
     Eigen::Vector3d rot = trajectory_rotations_[i];
     Eigen::AngleAxisd this_rot;
@@ -142,8 +142,6 @@ void VoliroTrajectoriesNode::rotateRPYToAxisAngle() {
     else {
       unwrapAxisAngle(trajectory_rotations_[i-1], this_rot, &trajectory_rotations_[i]);
     }
-    // std::cout << "Unwrapped: " << rot.transpose();
-    // std::cout << this_rot.axis() << ", " << this_rot.angle() << std::endl;
   }
 }
 
@@ -160,8 +158,14 @@ void VoliroTrajectoriesNode::initializePublishers() {
   plan_trajectory_srv_ = nh_.advertiseService(
       "plan_trajectory", &VoliroTrajectoriesNode::planTrajectorySrv, this);
 
+  homing_srv_ = nh_.advertiseService(
+      "homing", &VoliroTrajectoriesNode::homingSrv, this);
+
   publish_path_srv_ = nh_.advertiseService(
       "publish_path", &VoliroTrajectoriesNode::publishPathSrv, this);
+
+  stop_trajectory_srv_ = nh_.advertiseService(
+      "stop_trajectory", &VoliroTrajectoriesNode::stopTrajectorySrv, this);
 
   take_off_srv_ = nh_.advertiseService(
       "take_off", &VoliroTrajectoriesNode::takeOffSrv, this);
@@ -199,6 +203,11 @@ bool VoliroTrajectoriesNode::loadFileSrv(std_srvs::Empty::Request& request,
   return parseTextFile(waypoints_filename_);
 }
 
+bool VoliroTrajectoriesNode::homingSrv(std_srvs::Empty::Request& request,
+                                     std_srvs::Empty::Response& response) {
+  return homing();
+}
+
 bool VoliroTrajectoriesNode::publishPathSrv(std_srvs::Empty::Request& request,
                                      std_srvs::Empty::Response& response) {
   if (path_planned_) {
@@ -206,6 +215,37 @@ bool VoliroTrajectoriesNode::publishPathSrv(std_srvs::Empty::Request& request,
     return true;
   }
   return false;
+}
+
+bool VoliroTrajectoriesNode::homing() {
+  mav_msgs::EigenTrajectoryPoint start;
+  start.position_W = current_odometry_.position_W;
+  start.orientation_W_B = current_odometry_.orientation_W_B;
+  mav_msgs::EigenTrajectoryPoint goal = home_;
+  planToWaypoint(start, goal);
+  publishTrajectory(false);
+  return true;
+}
+
+bool VoliroTrajectoriesNode::stopTrajectorySrv(std_srvs::Empty::Request& request,
+                                     std_srvs::Empty::Response& response) {
+  return stopTrajectory();
+}
+
+bool VoliroTrajectoriesNode::stopTrajectory() {
+  ros::Time t_now = ros::Time::now();
+  ros::Duration dt = t_now - current_trajectory_msg_.header.stamp;
+  // Iterate through points to find current setpoint
+  int n = states_.size();
+  int i=0;
+  int64_t dt_nsec = dt.toNSec();
+  while (states_[i].time_from_start_ns <= dt_nsec && i < n-1) {
+    i++;
+  }
+  mav_msgs::msgMultiDofJointTrajectoryFromEigen (states_[i], &current_trajectory_msg_);
+  current_trajectory_msg_.header.stamp = t_now;
+  cmd_multi_dof_joint_trajectory_pub_.publish(current_trajectory_msg_);
+  return true;
 }
 
 bool VoliroTrajectoriesNode::planTrajectory() {
@@ -284,6 +324,7 @@ bool VoliroTrajectoriesNode::takeOff() {
   Eigen::AngleAxisd att0(current_odometry_.orientation_W_B);
   addConstantRotation(att0.axis()*att0.angle(), trajectory_lin);
   publishTrajectory(false);
+  home_.position_W = current_odometry_.position_W + takeoff_pos;
   return true;
 }
 
@@ -339,22 +380,21 @@ void VoliroTrajectoriesNode::addConstantRotation(const Eigen::Vector3d &rot,
 
 void VoliroTrajectoriesNode::publishTrajectory(const bool &rotate_trajectory) {
   const double sampling_interval = 0.01;
-  mav_msgs::EigenTrajectoryPoint::Vector states;
   mav_trajectory_generation::sampleWholeTrajectory(trajectory_,
-                           sampling_interval, &states);
+                           sampling_interval, &states_);
 
   // Rotate states to initial rotation:
   if (rotate_trajectory){
-    for (auto & s: states) {
+    for (auto & s: states_) {
       s.orientation_W_B = current_setpoint_.orientation_W_B * s.orientation_W_B;
     }
   }
-  trajectory_msgs::MultiDOFJointTrajectory msg;
-  mav_msgs::msgMultiDofJointTrajectoryFromEigen (states, &msg);
-  cmd_multi_dof_joint_trajectory_pub_.publish(msg);
+  mav_msgs::msgMultiDofJointTrajectoryFromEigen (states_, &current_trajectory_msg_);
+  current_trajectory_msg_.header.stamp = ros::Time::now();
+  cmd_multi_dof_joint_trajectory_pub_.publish(current_trajectory_msg_);
 
   geometry_msgs::PoseArray pose_array;
-  poseArrayFromEigen(states, &pose_array);
+  poseArrayFromEigen(states_, &pose_array);
   publishRvizPoseArray(pose_array);
 
   double trajectory_duration = trajectory_.getMaxTime();

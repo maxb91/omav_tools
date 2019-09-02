@@ -1,13 +1,11 @@
 <launch>
-  <arg name="namespace" default="voliro"/>
   <arg name="odometry_topic" default="msf_core/odometry"/>
   <arg name="waypoint_file_name" default="eval_traj_small"/>
   <arg name="world_frame_name" default="world"/>
 
-  <group ns="$(arg namespace)">
-    <node name="local_planner" pkg="omav_local_planner" type="voliro_trajectories_node" output="screen" clear_params="true">
-      <param name="waypoints_filename" value="$(find omav_local_planner)/resource/$(arg waypoint_file_name).txt" />
-    </node>
-  </group>
+  <node name="local_planner" pkg="omav_local_planner" type="voliro_trajectories_node" output="screen" clear_params="true">
+    <param name="waypoints_filename" value="$(find omav_local_planner)/resource/$(arg waypoint_file_name).txt" />
+    <remap from="odometry" to="$(arg odometry_topic)"/>
+  </node>
 
 </launch>

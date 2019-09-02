@@ -101,7 +101,11 @@ private:
 
   bool takeOff();
 
+  bool homing();
+
   bool planTrajectory();
+
+  bool stopTrajectory();
 
   void rotateRPYToAxisAngle();
 
@@ -115,6 +119,12 @@ private:
                                      std_srvs::Empty::Response& response);
 
   bool loadFileSrv(std_srvs::Empty::Request& request,
+                                     std_srvs::Empty::Response& response);
+
+  bool stopTrajectorySrv(std_srvs::Empty::Request& request,
+                                     std_srvs::Empty::Response& response);
+
+  bool homingSrv(std_srvs::Empty::Request& request,
                                      std_srvs::Empty::Response& response);
 
   void publishTrajectory(const bool &rotate_trajectory);
@@ -156,6 +166,7 @@ private:
   // Services:
   ros::ServiceServer take_off_srv_, load_file_srv_;
   ros::ServiceServer plan_trajectory_srv_, publish_path_srv_;
+  ros::ServiceServer stop_trajectory_srv_, homing_srv_;
 
   // Dynamic reconfigure
   dynamic_reconfigure::Server<omav_local_planner::VoliroTrajectoriesConfig>
@@ -180,6 +191,9 @@ private:
 
   // Current setpoint info:
   mav_msgs::EigenTrajectoryPoint current_setpoint_;
+  trajectory_msgs::MultiDOFJointTrajectory current_trajectory_msg_;
+  mav_msgs::EigenTrajectoryPoint::Vector states_;
+  mav_msgs::EigenTrajectoryPoint home_;
 };
 } // namespace omav_local_planner
 

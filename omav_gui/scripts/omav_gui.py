@@ -62,17 +62,17 @@ class App:
         print "Taking off"
 
     def plan(self):
-        plan_service = rospy.ServiceProxy('load_file', Trigger)
+        plan_service = rospy.ServiceProxy('load_file', Empty)
         plan_service()
         print "Planning trajectory"
     
     def execute(self):
-        execute_service = rospy.ServiceProxy('publish_path', Trigger)
+        execute_service = rospy.ServiceProxy('publish_path', Empty)
         execute_service()
         print "Executing trajectory"
     
     def stop(self):
-        stop_service = rospy.ServiceProxy('stop', Trigger)
+        stop_service = rospy.ServiceProxy('stop_trajectory', Empty)
         stop_service()
         print "Stopping trajectory"
     
@@ -82,8 +82,8 @@ class App:
         print "landing"
     
     def home(self):
-        home_service = rospy.ServiceProxy('mission/start_stop_task', RunTaskService)
-        home_service("Homing",True)
+        home_service = rospy.ServiceProxy('homing', Empty)
+        home_service()
         print "Going home"
     
     def recordBag(self):
