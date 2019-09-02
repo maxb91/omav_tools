@@ -1,0 +1,11 @@
+<launch>
+  <arg name="namespace" default="voliro"/>
+  <arg name="odometry_topic" default="odometry_sensor/odometry"/>
+  <arg name="world_frame_name" default="world"/>
+
+  <group ns="$(arg namespace)">
+    <node pkg="omav_gui" name="omav_gui" type="omav_gui.py" output="screen">
+    </node>
+  </group>
+
+</launch>

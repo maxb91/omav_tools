@@ -1,0 +1,10 @@
+<launch>
+  <arg name="namespace" default="voliro"/>
+  <arg name="odometry_topic" default="odometry_sensor/odometry"/>
+  <arg name="world_frame_name" default="world"/>
+  <arg name="bag_location" default="$(env HOME)"/>
+
+  <node pkg="rosbag" name="record_bag" type="record" output="screen"
+  	args="-o $(arg bag_location)/bag -a"/>
+
+</launch>
