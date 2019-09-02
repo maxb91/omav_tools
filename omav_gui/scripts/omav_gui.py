@@ -6,7 +6,6 @@ import roslaunch
 import rospkg
 from std_srvs.srv import Trigger, SetBool, Empty
 from sensor_fusion_comm.srv import InitScale
-from mav_state_machine_msgs.srv import RunTaskService 
 from mavros_msgs.srv import CommandBool
 class App:
     def __init__(self, master):
@@ -77,8 +76,8 @@ class App:
         print "Stopping trajectory"
     
     def land(self):
-        land_service = rospy.ServiceProxy('mission/start_stop_task', RunTaskService)
-        land_service("Landing",True)
+        land_service = rospy.ServiceProxy('land', Empty)
+        land_service()
         print "landing"
     
     def home(self):
