@@ -103,11 +103,15 @@ private:
 
   bool homing();
 
+  bool land();
+
   bool planTrajectory();
 
   bool stopTrajectory();
 
   void rotateRPYToAxisAngle();
+
+  bool goToTrajectory();
 
   bool takeOffSrv(std_srvs::Empty::Request& request,
                                      std_srvs::Empty::Response& response);
@@ -122,6 +126,12 @@ private:
                                      std_srvs::Empty::Response& response);
 
   bool stopTrajectorySrv(std_srvs::Empty::Request& request,
+                                     std_srvs::Empty::Response& response);
+
+  bool landSrv(std_srvs::Empty::Request& request,
+                                     std_srvs::Empty::Response& response);
+
+  bool goToTrajectorySrv(std_srvs::Empty::Request& request,
                                      std_srvs::Empty::Response& response);
 
   bool homingSrv(std_srvs::Empty::Request& request,
@@ -167,6 +177,7 @@ private:
   ros::ServiceServer take_off_srv_, load_file_srv_;
   ros::ServiceServer plan_trajectory_srv_, publish_path_srv_;
   ros::ServiceServer stop_trajectory_srv_, homing_srv_;
+  ros::ServiceServer land_srv_, go_to_trajectory_srv_;
 
   // Dynamic reconfigure
   dynamic_reconfigure::Server<omav_local_planner::VoliroTrajectoriesConfig>

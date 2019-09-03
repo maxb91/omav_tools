@@ -6,7 +6,6 @@ import roslaunch
 import rospkg
 from std_srvs.srv import Trigger, SetBool, Empty
 from sensor_fusion_comm.srv import InitScale
-from mav_state_machine_msgs.srv import RunTaskService 
 from mavros_msgs.srv import CommandBool
 class App:
     def __init__(self, master):
@@ -27,17 +26,17 @@ class App:
         self.button_plan = Button(frame, text="PLAN", bg="yellow", command=self.plan, width=6, height=6)
         self.button_plan.grid(row=0,column=2)
         
+        self.button_go_to_trajectory = Button(frame, text="GO TO TRAJ", bg="yellow", command=self.goToTrajectory, width=8, height=6)
+        self.button_go_to_trajectory.grid(row=0,column=3)
+        
         self.button_execute = Button(frame, text="EXECUTE", bg="cyan", command=self.execute, width=6, height=6)
-        self.button_execute.grid(row=0,column=3)
+        self.button_execute.grid(row=0,column=4)
         
         self.button_stop = Button(frame, text="STOP", bg="red", command=self.stop, width=6, height=6)
-        self.button_stop.grid(row=0,column=4)
+        self.button_stop.grid(row=0,column=5)
         
         self.button_land = Button(frame, text="LAND", bg="orange", command=self.land, width=12, height=6)
-        self.button_land.grid(row=0,column=5)
-        
-        self.button_home = Button(frame, text="HOME", bg="orange", command=self.home, width=12, height=6)
-        self.button_home.grid(row=0,column=6)
+        self.button_land.grid(row=0,column=6)
         
         self.button_home = Button(frame, text="HOME", bg="orange", command=self.home, width=12, height=6)
         self.button_home.grid(row=0,column=7)
@@ -77,9 +76,14 @@ class App:
         print "Stopping trajectory"
     
     def land(self):
-        land_service = rospy.ServiceProxy('mission/start_stop_task', RunTaskService)
-        land_service("Landing",True)
-        print "landing"
+        land_service = rospy.ServiceProxy('land', Empty)
+        land_service()
+        print "Landing"
+    
+    def goToTrajectory(self):
+        go_to_trajectory_service = rospy.ServiceProxy('go_to_trajectory', Empty)
+        go_to_trajectory_service()
+        print "Going to trajectory start."
     
     def home(self):
         home_service = rospy.ServiceProxy('homing', Empty)

@@ -127,6 +127,13 @@ void unwrapAxisAngle(const Eigen::Vector3d &axis1, const Eigen::AngleAxisd &rot2
   *rot2_3d = best_angle;
 }
 
+void quaternionFromRPY(const Eigen::Vector3d &rot, Eigen::Quaterniond *q) {
+    Eigen::Matrix3d m = (Eigen::AngleAxisd(-rot(2), Eigen::Vector3d::UnitX())
+                        * Eigen::AngleAxisd(-rot(1),  Eigen::Vector3d::UnitY())
+                        * Eigen::AngleAxisd(-rot(0), Eigen::Vector3d::UnitZ())).toRotationMatrix();
+    *q = Eigen::Quaterniond(m.transpose());
+}
+
 void VoliroTrajectoriesNode::rotateRPYToAxisAngle() {
   for (int i=0;i<n_points_;i++) {
     Eigen::Vector3d rot = trajectory_rotations_[i];
@@ -170,8 +177,14 @@ void VoliroTrajectoriesNode::initializePublishers() {
   take_off_srv_ = nh_.advertiseService(
       "take_off", &VoliroTrajectoriesNode::takeOffSrv, this);
 
+  land_srv_ = nh_.advertiseService(
+      "land", &VoliroTrajectoriesNode::landSrv, this);
+
   load_file_srv_ = nh_.advertiseService(
       "load_file", &VoliroTrajectoriesNode::loadFileSrv, this);
+
+  go_to_trajectory_srv_ = nh_.advertiseService(
+      "go_to_trajectory", &VoliroTrajectoriesNode::goToTrajectorySrv, this);
 }
 
 void VoliroTrajectoriesNode::odometryCallback(
@@ -195,7 +208,12 @@ void VoliroTrajectoriesNode::multiDofJointTrajectoryCallback(
 
 bool VoliroTrajectoriesNode::planTrajectorySrv(std_srvs::Empty::Request& request,
                                      std_srvs::Empty::Response& response) {
-  return planTrajectory();
+  return parseTextFile(waypoints_filename_);
+}
+
+bool VoliroTrajectoriesNode::goToTrajectorySrv(std_srvs::Empty::Request& request,
+                                     std_srvs::Empty::Response& response) {
+  return goToTrajectory();
 }
 
 bool VoliroTrajectoriesNode::loadFileSrv(std_srvs::Empty::Request& request,
@@ -206,6 +224,35 @@ bool VoliroTrajectoriesNode::loadFileSrv(std_srvs::Empty::Request& request,
 bool VoliroTrajectoriesNode::homingSrv(std_srvs::Empty::Request& request,
                                      std_srvs::Empty::Response& response) {
   return homing();
+}
+
+bool VoliroTrajectoriesNode::landSrv(std_srvs::Empty::Request& request,
+                                     std_srvs::Empty::Response& response) {
+  return land();
+}
+
+bool VoliroTrajectoriesNode::goToTrajectory() {
+  mav_msgs::EigenTrajectoryPoint start, goal;
+  start.position_W = current_odometry_.position_W;
+  start.orientation_W_B = current_odometry_.orientation_W_B;
+  goal.position_W = trajectory_positions_.front();
+  quaternionFromRPY(trajectory_rotations_.front(), &goal.orientation_W_B);
+  planToWaypoint(start, goal);
+  publishTrajectory(false);
+  parseTextFile(waypoints_filename_);
+  return true;
+}
+
+bool VoliroTrajectoriesNode::land() {
+  mav_msgs::EigenTrajectoryPoint start;
+  start.position_W = current_odometry_.position_W;
+  start.orientation_W_B = current_odometry_.orientation_W_B;
+  mav_msgs::EigenTrajectoryPoint goal = start;
+  goal.setFromYaw(start.getYaw());
+  goal.position_W(2) = 0.0;
+  planToWaypoint(start, goal);
+  publishTrajectory(false);
+  return true;
 }
 
 bool VoliroTrajectoriesNode::publishPathSrv(std_srvs::Empty::Request& request,
