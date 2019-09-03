@@ -236,9 +236,14 @@ bool VoliroTrajectoriesNode::goToTrajectory() {
   start.position_W = current_odometry_.position_W;
   start.orientation_W_B = current_odometry_.orientation_W_B;
   goal.position_W = trajectory_positions_.front();
-  quaternionFromRPY(trajectory_rotations_.front(), &goal.orientation_W_B);
-  planToWaypoint(start, goal);
-  publishTrajectory(false);
+  // Need hack since the parseFile inverts rotations
+  Eigen::Vector3d start_rpy(trajectory_rotations_.front()(2),
+                            trajectory_rotations_.front()(1),
+                            trajectory_rotations_.front()(0));
+  quaternionFromRPY(start_rpy, &goal.orientation_W_B);
+  if(planToWaypoint(start, goal)) {
+    publishTrajectory(false);
+  }
   parseTextFile(waypoints_filename_);
   return true;
 }
@@ -250,8 +255,9 @@ bool VoliroTrajectoriesNode::land() {
   mav_msgs::EigenTrajectoryPoint goal = start;
   goal.setFromYaw(start.getYaw());
   goal.position_W(2) = 0.0;
-  planToWaypoint(start, goal);
-  publishTrajectory(false);
+  if (planToWaypoint(start, goal)) {
+    publishTrajectory(false);
+  }
   return true;
 }
 
@@ -269,8 +275,9 @@ bool VoliroTrajectoriesNode::homing() {
   start.position_W = current_odometry_.position_W;
   start.orientation_W_B = current_odometry_.orientation_W_B;
   mav_msgs::EigenTrajectoryPoint goal = home_;
-  planToWaypoint(start, goal);
-  publishTrajectory(false);
+  if(planToWaypoint(start, goal)) {
+    publishTrajectory(false);
+  }
   return true;
 }
 
