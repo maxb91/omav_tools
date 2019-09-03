@@ -4,8 +4,8 @@
   <arg name="world_frame_name" default="world"/>
 
   <group ns="$(arg namespace)">
-	  <node pkg="omav_gui" name="omav_gui" type="omav_gui.py" output="screen">
-	  </node>
-	</group>
+    <node pkg="omav_gui" name="omav_gui" type="omav_gui.py" output="screen">
+    </node>
+  </group>
 
 </launch>
