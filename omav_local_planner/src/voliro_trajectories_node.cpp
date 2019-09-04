@@ -177,6 +177,9 @@ void VoliroTrajectoriesNode::initializePublishers() {
   take_off_srv_ = nh_.advertiseService(
       "take_off", &VoliroTrajectoriesNode::takeOffSrv, this);
 
+  start_srv_ = nh_.advertiseService(
+      "start", &VoliroTrajectoriesNode::startSrv, this);
+
   land_srv_ = nh_.advertiseService(
       "land", &VoliroTrajectoriesNode::landSrv, this);
 
@@ -206,6 +209,23 @@ void VoliroTrajectoriesNode::multiDofJointTrajectoryCallback(
   mav_msgs::eigenTrajectoryPointFromMsg(msg->points.back(), &current_setpoint_);
 }
 
+
+bool VoliroTrajectoriesNode::startSrv(std_srvs::Empty::Request& request,
+                                     std_srvs::Empty::Response& response) {
+  mav_msgs::EigenTrajectoryPoint trajectory_point;
+  trajectory_point.position_W = current_odometry_.position_W;
+  trajectory_point.position_W(2) = 0.0;
+  trajectory_point.orientation_W_B = current_odometry_.orientation_W_B;
+  mav_msgs::msgMultiDofJointTrajectoryFromEigen (trajectory_point, &current_trajectory_msg_);
+  cmd_multi_dof_joint_trajectory_pub_.publish(current_trajectory_msg_);
+  return true;
+}
+
+bool VoliroTrajectoriesNode::takeOffSrv(std_srvs::Empty::Request& request,
+                                     std_srvs::Empty::Response& response) {
+  return takeOff();
+}
+
 bool VoliroTrajectoriesNode::planTrajectorySrv(std_srvs::Empty::Request& request,
                                      std_srvs::Empty::Response& response) {
   return parseTextFile(waypoints_filename_);
@@ -232,6 +252,7 @@ bool VoliroTrajectoriesNode::landSrv(std_srvs::Empty::Request& request,
 }
 
 bool VoliroTrajectoriesNode::goToTrajectory() {
+  parseTextFile(waypoints_filename_);
   mav_msgs::EigenTrajectoryPoint start, goal;
   start.position_W = current_odometry_.position_W;
   start.orientation_W_B = current_odometry_.orientation_W_B;
@@ -366,11 +387,14 @@ bool VoliroTrajectoriesNode::planToWaypoint(const mav_msgs::EigenTrajectoryPoint
   return true;
 
 }
+
 bool VoliroTrajectoriesNode::takeOff() {
   Eigen::Vector3d takeoff_pos;
   takeoff_pos << 0, 0, params_.takeoff_z;
   std::vector<Eigen::Vector3d> pos, vel;
-  pos.push_back(current_odometry_.position_W);
+  Eigen::Vector3d pos0 = current_odometry_.position_W;
+  pos0(2) = 0.0;
+  pos.push_back(pos0);
   pos.push_back(current_odometry_.position_W + takeoff_pos);
   vel.push_back(Eigen::Vector3d::Zero());
   vel.push_back(Eigen::Vector3d::Zero());
@@ -382,12 +406,6 @@ bool VoliroTrajectoriesNode::takeOff() {
   home_.position_W = current_odometry_.position_W + takeoff_pos;
   return true;
 }
-
-bool VoliroTrajectoriesNode::takeOffSrv(std_srvs::Empty::Request& request,
-                                     std_srvs::Empty::Response& response) {
-  return takeOff();
-}
-
 
 void VoliroTrajectoriesNode::addConstantPosition(const Eigen::Vector3d &pos,
                             const mav_trajectory_generation::Trajectory &traj_rot) {

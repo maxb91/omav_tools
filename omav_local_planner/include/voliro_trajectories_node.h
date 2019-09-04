@@ -113,6 +113,9 @@ private:
 
   bool goToTrajectory();
 
+  bool startSrv(std_srvs::Empty::Request& request,
+                                     std_srvs::Empty::Response& response);
+
   bool takeOffSrv(std_srvs::Empty::Request& request,
                                      std_srvs::Empty::Response& response);
 
@@ -178,6 +181,7 @@ private:
   ros::ServiceServer plan_trajectory_srv_, publish_path_srv_;
   ros::ServiceServer stop_trajectory_srv_, homing_srv_;
   ros::ServiceServer land_srv_, go_to_trajectory_srv_;
+  ros::ServiceServer start_srv_;
 
   // Dynamic reconfigure
   dynamic_reconfigure::Server<omav_local_planner::VoliroTrajectoriesConfig>
