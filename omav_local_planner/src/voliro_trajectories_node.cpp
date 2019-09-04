@@ -263,6 +263,7 @@ bool VoliroTrajectoriesNode::land() {
 
 bool VoliroTrajectoriesNode::publishPathSrv(std_srvs::Empty::Request& request,
                                      std_srvs::Empty::Response& response) {
+  parseTextFile(waypoints_filename_);
   if (path_planned_) {
     publishTrajectory(false);
     return true;
