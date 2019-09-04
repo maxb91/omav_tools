@@ -26,23 +26,23 @@ class App:
         self.button_takeoff = Button(frame, text="TAKE OFF", bg="cyan", command=self.takeoff, width=12, height=6)
         self.button_takeoff.grid(row=0,column=2)
 
-        self.button_plan = Button(frame, text="PLAN", bg="yellow", command=self.plan, width=6, height=6)
-        self.button_plan.grid(row=0,column=3)
+        # self.button_plan = Button(frame, text="PLAN", bg="yellow", command=self.plan, width=6, height=6)
+        # self.button_plan.grid(row=0,column=3)
         
         self.button_go_to_trajectory = Button(frame, text="GO TO TRAJ", bg="yellow", command=self.goToTrajectory, width=8, height=6)
-        self.button_go_to_trajectory.grid(row=0,column=4)
+        self.button_go_to_trajectory.grid(row=0,column=3)
         
         self.button_execute = Button(frame, text="EXECUTE", bg="cyan", command=self.execute, width=6, height=6)
-        self.button_execute.grid(row=0,column=5)
+        self.button_execute.grid(row=0,column=4)
         
         self.button_stop = Button(frame, text="STOP", bg="red", command=self.stop, width=6, height=6)
-        self.button_stop.grid(row=0,column=6)
+        self.button_stop.grid(row=0,column=5)
         
         self.button_land = Button(frame, text="LAND", bg="orange", command=self.land, width=12, height=6)
-        self.button_land.grid(row=0,column=7)
+        self.button_land.grid(row=0,column=6)
         
         self.button_home = Button(frame, text="HOME", bg="orange", command=self.home, width=12, height=6)
-        self.button_home.grid(row=0,column=8)
+        self.button_home.grid(row=0,column=7)
 
         self.button_record_bag = Button(frame, text="Record bag", bg="cyan", command=self.recordBag, width=6, height=4)
         self.button_record_bag.grid(row=1,column=1)
@@ -68,10 +68,10 @@ class App:
         takeoff_service()
         print "Taking off"
 
-    def plan(self):
-        plan_service = rospy.ServiceProxy('load_file', Empty)
-        plan_service()
-        print "Planning trajectory"
+    # def plan(self):
+    #     plan_service = rospy.ServiceProxy('load_file', Empty)
+    #     plan_service()
+    #     print "Planning trajectory"
     
     def execute(self):
         execute_service = rospy.ServiceProxy('publish_path', Empty)
