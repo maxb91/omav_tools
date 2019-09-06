@@ -199,6 +199,7 @@ private:
 
   bool trajectory_running_;
   bool path_planned_;
+  int order_rpy_;
 
   // Trajectory info:
   mav_trajectory_generation::Trajectory trajectory_;

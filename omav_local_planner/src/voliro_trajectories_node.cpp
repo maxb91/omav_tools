@@ -35,6 +35,7 @@ VoliroTrajectoriesNode::VoliroTrajectoriesNode(
   dyn_config_server_.setCallback(f);
   path_planned_ = false;
   waypoints_filename_ = "";
+  order_rpy_ = 0;
 
   initializeParams();
   initializeSubscribers();
@@ -66,6 +67,10 @@ void VoliroTrajectoriesNode::dynConfigCallback(
 void VoliroTrajectoriesNode::initializeParams() {
   ros::NodeHandle pnh("~");
   pnh.param("waypoints_filename", waypoints_filename_, waypoints_filename_);
+  // Rotation order:
+  // 0 = rotate yaw - pitch - roll from world to body frame
+  // 1 = rotate roll - pitch - yaw from world to body frame
+  pnh.param("order_rpy", order_rpy_, order_rpy_);
   parseTextFile(waypoints_filename_);
 }
 
@@ -127,11 +132,16 @@ void unwrapAxisAngle(const Eigen::Vector3d &axis1, const Eigen::AngleAxisd &rot2
   *rot2_3d = best_angle;
 }
 
-void quaternionFromRPY(const Eigen::Vector3d &rot, Eigen::Quaterniond *q) {
+void quaternionFromRPY(const Eigen::Vector3d &rot, Eigen::Quaterniond *q, const int &order=0) {
     Eigen::Matrix3d m = (Eigen::AngleAxisd(-rot(2), Eigen::Vector3d::UnitX())
                         * Eigen::AngleAxisd(-rot(1),  Eigen::Vector3d::UnitY())
                         * Eigen::AngleAxisd(-rot(0), Eigen::Vector3d::UnitZ())).toRotationMatrix();
-    *q = Eigen::Quaterniond(m.transpose());
+    if (order == 0){
+      *q = Eigen::Quaterniond(m.transpose());
+    }
+    else {
+      *q = Eigen::Quaterniond(m);
+    }
 }
 
 void VoliroTrajectoriesNode::rotateRPYToAxisAngle() {
@@ -141,7 +151,12 @@ void VoliroTrajectoriesNode::rotateRPYToAxisAngle() {
     Eigen::Matrix3d m = (Eigen::AngleAxisd(-rot(2), Eigen::Vector3d::UnitX())
                                 * Eigen::AngleAxisd(-rot(1),  Eigen::Vector3d::UnitY())
                                 * Eigen::AngleAxisd(-rot(0), Eigen::Vector3d::UnitZ())).toRotationMatrix();
-    this_rot.fromRotationMatrix(m.transpose());
+    if (order_rpy_ == 0){
+      this_rot.fromRotationMatrix(m.transpose());
+    }
+    else {
+      this_rot.fromRotationMatrix(m);      
+    }
 
     if (i==0) {
       trajectory_rotations_[0] = this_rot.axis() * this_rot.angle();
@@ -261,7 +276,7 @@ bool VoliroTrajectoriesNode::goToTrajectory() {
   Eigen::Vector3d start_rpy(trajectory_rotations_.front()(2),
                             trajectory_rotations_.front()(1),
                             trajectory_rotations_.front()(0));
-  quaternionFromRPY(start_rpy, &goal.orientation_W_B);
+  quaternionFromRPY(start_rpy, &goal.orientation_W_B, order_rpy_);
   if(planToWaypoint(start, goal)) {
     publishTrajectory(false);
   }
@@ -333,13 +348,29 @@ bool VoliroTrajectoriesNode::planTrajectory() {
     velocities.push_back(Eigen::Vector3d::Zero());
   }
 
-  createTrajectory(trajectory_positions_, velocities,
-                    params_.a_max_trans, params_.v_max_trans,
-                    &trajectory_lin);
-  createTrajectory(trajectory_rotations_, velocities,
-                    params_.a_max_ang, params_.v_max_ang,
-                    &trajectory_rot);
-  trajectory_lin.getTrajectoryWithAppendedDimension(trajectory_rot, &trajectory_);
+  bool only_rot = false;
+  // Catch zero translation:
+  for (int i=0;i<n_points_-1;i++){
+    if((trajectory_positions_[i]-trajectory_positions_[i+1]).norm() < 0.01) {
+      ROS_WARN("Detected zero movement between points. Taking first positoin waypoint and ignoring translation.");
+      only_rot = true;
+    }
+  }
+  if (only_rot) {
+    createTrajectory(trajectory_rotations_, velocities,
+                      params_.a_max_ang, params_.v_max_ang,
+                      &trajectory_rot);
+    addConstantPosition(trajectory_positions_[0], trajectory_rot);
+  }
+  else {
+    createTrajectory(trajectory_positions_, velocities,
+                      params_.a_max_trans, params_.v_max_trans,
+                      &trajectory_lin);
+    createTrajectory(trajectory_rotations_, velocities,
+                      params_.a_max_ang, params_.v_max_ang,
+                      &trajectory_rot);
+    trajectory_lin.getTrajectoryWithAppendedDimension(trajectory_rot, &trajectory_);
+  }
   path_planned_ = true;
   ROS_INFO("Finished planning trajectory.");
   return true;
